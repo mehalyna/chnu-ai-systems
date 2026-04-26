@@ -71,21 +71,53 @@ def parse_teacher_profile(soup: BeautifulSoup, url: str) -> Optional[Dict]:
             profile["phone"] = phone_match.group(0)
             break
     
-    # Extract courses (look for lists, tables, sections with course info)
-    course_keywords = ['курс', 'course', 'дисципл', 'discipline', 'предмет', 'subject']
+    # Extract courses - look specifically for teaching sections
+    # These keywords indicate actual teaching/course sections
+    course_header_keywords = [
+        'забезпечує викладання', 'викладає дисципл', 'викладає курс',
+        'teaching', 'teaches courses', 'teaches subjects'
+    ]
+    
+    # These keywords indicate publication/research sections (NOT courses)
+    publication_keywords = [
+        'методичн', 'посібник', 'публікац', 'матеріал', 
+        'конференц', 'стаття', 'праці', 'робот',
+        'methodical', 'publication', 'conference', 'article', 'paper'
+    ]
+    
+    # These patterns indicate co-authored works (publications, not courses)
+    coauthor_indicators = [
+        'спільно з', 'разом з', 'методичні рекомендації',
+        'jointly with', 'together with', 'co-author'
+    ]
     
     # Check for course lists
     lists = soup.find_all(['ul', 'ol'])
     for lst in lists:
         # Check if list is near course-related text
-        prev_text = ""
         prev_elem = lst.find_previous(['h2', 'h3', 'h4', 'p', 'strong'])
-        if prev_elem:
-            prev_text = prev_elem.get_text().lower()
+        if not prev_elem:
+            continue
         
-        if any(keyword in prev_text for keyword in course_keywords):
+        prev_text = prev_elem.get_text().lower()
+        
+        # Skip if this is a publication section
+        if any(keyword in prev_text for keyword in publication_keywords):
+            continue
+        
+        # Only extract if it's clearly a teaching/courses section
+        if any(keyword in prev_text for keyword in course_header_keywords):
             for item in lst.find_all('li'):
                 course_text = item.get_text(strip=True)
+                
+                # Filter out publications (they have co-authors, methodical notes, etc.)
+                if any(indicator in course_text.lower() for indicator in coauthor_indicators):
+                    continue
+                
+                # Also skip if it contains publication indicators in the text itself
+                if any(pub_kw in course_text.lower() for pub_kw in ['методичн', 'посібник', 'стаття']):
+                    continue
+                
                 if course_text and len(course_text) > 3:
                     profile["courses"].append(course_text)
     
