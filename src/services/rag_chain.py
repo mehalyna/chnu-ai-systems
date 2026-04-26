@@ -20,8 +20,10 @@ os.environ['LANGCHAIN_TRACING_V2'] = 'true'
 os.environ['LANGCHAIN_ENDPOINT'] = 'https://api.smith.langchain.com'
 
 langchain_api_key = os.getenv("LANGCHAIN_API_KEY")
-os.environ['LANGCHAIN_API_KEY'] = langchain_api_key
-os.environ['OPENAI_API_KEY'] = OPEN_API_KEY
+if langchain_api_key:
+    os.environ['LANGCHAIN_API_KEY'] = langchain_api_key
+if OPEN_API_KEY:
+    os.environ['OPENAI_API_KEY'] = OPEN_API_KEY
 
 
 def query_math_faculty(question: str, chat_history: list[str], vector_store = Depends(get_vector_store)):
@@ -62,12 +64,12 @@ def create_rag_chain(template: ChatPromptTemplate, vector_store = Depends(get_ve
         print(f"⚠️  MultiQueryRetriever failed: {e}, using base retriever")
         retriever = base_retriever
 
-    def format_docs(docs):with structure preservation."""
+    def format_docs(docs):
+        """Format documents with structure preservation."""
         if not docs:
             return "No relevant context found."
         # Use enhanced formatting that groups related info
-        return format_structured_context(
-        return "\n\n".join(doc.page_content for doc in docs)
+        return format_structured_context(docs)
     
     rag_chain = (
         {
